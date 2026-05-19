@@ -3,7 +3,7 @@
 #include <sys/socket.h> 
 #include <netinet/in.h> 
 #include <stdlib.h> 
-#define MAX 100 
+#define MAX 1024
  
 int main(int argc, char *argv[]) { 
     int sock_fd, n; 

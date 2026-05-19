@@ -3,36 +3,49 @@
 #include <sys/socket.h> 
 #include <netinet/in.h> 
 #include <unistd.h> 
+#include <arpa/inet.h>
  
 int main() { 
-    int clientsocket, port; 
-    struct sockaddr_in serveraddr; 
+    int client; 
+    struct sockaddr_in serverAddr; 
     socklen_t len; 
-    char message[100]; 
-    clientsocket = socket(AF_INET, SOCK_DGRAM, 0); 
-    serveraddr.sin_family = AF_INET; 
-    printf("Enter Port: "); 
-    scanf("%d", &port); 
-    getchar(); 
-    serveraddr.sin_port = htons(port); 
-    serveraddr.sin_addr.s_addr = INADDR_ANY; 
+    char buffer[1024]; 
+    
+    client = socket(AF_INET, SOCK_DGRAM, 0); 
+    
+    serverAddr.sin_family = AF_INET;  
+    serverAddr.sin_port = htons(8080); 
+    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1"); 
  
     while(1) { 
+
+        memset(buffer, 0, sizeof(buffer));
+        len = sizeof(serverAddr);
         printf("\nClient (You): "); 
-        fgets(message, 100, stdin); 
-         
-        // Send to server 
-        sendto(clientsocket, message, sizeof(message), 0, (struct sockaddr*)&serveraddr, 
-sizeof(serveraddr)); 
-        if (strncmp(message, "exit", 4) == 0) break; 
-        bzero(message, 100); 
-        len = sizeof(serveraddr);    
-        // Receive reply 
-        recvfrom(clientsocket, message, sizeof(message), 0, (struct sockaddr*)&serveraddr, 
-&len); 
-        printf("Server: %s", message); 
-        if (strncmp(message, "exit", 4) == 0) break; 
+        fgets(buffer, sizeof(buffer), stdin); 
+        
+        sendto(client, 
+            buffer, 
+            strlen(buffer), 
+            0, 
+            (struct sockaddr*)&serverAddr, 
+            len);
+        if (strncmp(buffer, "exit", 4) == 0) break; 
+
+        memset(buffer, 0, sizeof(buffer));
+
+        len = sizeof(serverAddr);    
+     
+        recvfrom(client, 
+                buffer, 
+                sizeof(buffer), 
+                0, 
+                (struct sockaddr*)&serverAddr,
+                &len);
+
+        printf("Server: %s", buffer); 
+        if (strncmp(buffer, "exit", 4) == 0) break; 
     } 
-    close(clientsocket); 
+    close(client); 
     return 0; 
 } 

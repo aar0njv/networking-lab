@@ -6,42 +6,60 @@
 #include<unistd.h> 
  
 int main() { 
-    int serversocket, clientsocket, port; 
-    struct sockaddr_in serveraddr, clientaddr; 
-    socklen_t len; 
-    char message[100]; 
-    serversocket = socket(AF_INET, SOCK_STREAM, 0); 
-    serveraddr.sin_family = AF_INET; 
-    serveraddr.sin_addr.s_addr = INADDR_ANY; 
-    printf("Enter the port number: "); 
-    scanf("%d", &port); 
-    getchar(); // Consume the newline left by scanf 
-    serveraddr.sin_port = htons(port); 
-    bind(serversocket, (struct sockaddr*)&serveraddr, sizeof(serveraddr)); 
+    int server, client;
+    struct sockaddr_in serverAddr, clientAddr;
+    socklen_t len;
+    char buffer[1024];
 
-    listen(serversocket, 5); 
-    printf("\nWaiting for client connection...\n"); 
-    len = sizeof(clientaddr); 
-    clientsocket = accept(serversocket, (struct sockaddr*)&clientaddr, &len); 
-    printf("Client connected!\n"); 
- 
-    // --- CHAT LOOP START --- 
+    server = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (server < 0) {
+        printf("Socket connection failed\n");
+        exit(1);
+    }
+
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+    serverAddr.sin_port = htons(8080);
+
+    bind(server,
+        (struct sockaddr*)&serverAddr,
+        sizeof(serverAddr));
+    
+    listen(server, 5);
+
+    printf("Waiting for client connections...\n");
+
+    len = sizeof(clientAddr);
+
+    client = accept(server,
+                    (struct sockaddr*)&clientAddr,
+                    &len);
+
+    if (client < 0){
+        printf("Accept failed.\n");
+        exit(1);
+    }
+    printf("Client connected successfully...\n");
+
     while(1) { 
-        bzero(message, 100); 
-        read(clientsocket, message, sizeof(message)); 
-        printf("\nClient: %s", message); 
-        if (strncmp(message, "exit", 4) == 0) { 
+        
+        memset(buffer, 0, sizeof(buffer));
+
+        recv(client, buffer, sizeof(buffer), 0);
+        printf("\nClient: %s", buffer); 
+        if (strncmp(buffer, "exit", 4) == 0) { 
             printf("Client closed the chat.\n"); 
             break; 
         } 
         printf("Server (You): "); 
-        fgets(message, 100, stdin); 
-        write(clientsocket, message, sizeof(message)); 
-        if (strncmp(message, "exit", 4) == 0) break; 
+        fgets(buffer, sizeof(buffer), stdin); 
+        send(client, buffer, strlen(buffer), 0); 
+        if (strncmp(buffer, "exit", 4) == 0) break; 
     } 
     // --- CHAT LOOP END --- 
 
-    close(clientsocket); 
-    close(serversocket); 
+    close(client); 
+    close(server); 
     return 0; 
 } 

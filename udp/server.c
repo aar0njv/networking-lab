@@ -5,35 +5,49 @@
 #include <unistd.h> 
  
 int main() { 
-    int serversocket, port; 
-    struct sockaddr_in serveraddr, clientaddr; 
+    int server; 
+    struct sockaddr_in serverAddr, clientAddr; 
     socklen_t len; 
-    char message[100]; 
-    // Note: SOCK_DGRAM is used for UDP 
-    serversocket = socket(AF_INET, SOCK_DGRAM, 0); 
-    serveraddr.sin_family = AF_INET; 
-    serveraddr.sin_addr.s_addr = INADDR_ANY;  
-    printf("Enter Port: "); 
-    scanf("%d", &port); 
-    getchar(); 
-    serveraddr.sin_port = htons(port); 
-    bind(serversocket, (struct sockaddr*)&serveraddr, sizeof(serveraddr)); 
-    printf("UDP Server Waiting...\n"); 
- 
+    char buffer[1024]; 
+
+    server = socket(AF_INET, SOCK_DGRAM, 0); 
+    serverAddr.sin_family = AF_INET; 
+    serverAddr.sin_addr.s_addr = INADDR_ANY;  
+    serverAddr.sin_port = htons(8080); 
+
+    bind(server, 
+        (struct sockaddr*)&serverAddr, 
+        sizeof(serverAddr)); 
+    
+        printf("UDP Server Waiting...\n"); 
+        
+    len = sizeof(clientAddr); 
+    
     while(1) { 
-        len = sizeof(clientaddr); 
-        bzero(message, 100); 
-        // Receive from anyone 
-        recvfrom(serversocket, message, sizeof(message), 0, (struct sockaddr*)&clientaddr, 
-&len); 
-        printf("\nClient: %s", message); 
-        if (strncmp(message, "exit", 4) == 0) break; 
+        memset(buffer, 0, sizeof(buffer));
+
+        recvfrom(server, 
+            buffer, 
+            sizeof(buffer), 
+            0, 
+            (struct sockaddr*)&clientAddr, 
+            &len); 
+        
+        printf("\nClient: %s", buffer); 
+        if (strncmp(buffer, "exit", 4) == 0) break; 
+        
+        
         printf("Server (You): "); 
-        fgets(message, 100, stdin);   
-        // Send back to the specific client that just messaged us 
-        sendto(serversocket, message, sizeof(message), 0, (struct sockaddr*)&clientaddr, len); 
-        if (strncmp(message, "exit", 4) == 0) break; 
+        fgets(buffer, sizeof(buffer), stdin);   
+        sendto(server, 
+            buffer, 
+            strlen(buffer), 
+            0, 
+            (struct sockaddr*)&clientAddr, 
+            len); 
+        if (strncmp(buffer, "exit", 4) == 0) break; 
+    
     } 
-    close(serversocket); 
+    close(server); 
     return 0; 
 }

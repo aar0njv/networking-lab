@@ -3,35 +3,49 @@
 #include<sys/socket.h> 
 #include<netinet/in.h> 
 #include<unistd.h> 
+#include<stdlib.h>
+#include<arpa/inet.h>
  
 int main() { 
-    int clientsocket, port; 
-    struct sockaddr_in serveraddr; 
-    char message[100]; 
-    clientsocket = socket(AF_INET, SOCK_STREAM, 0); 
-    serveraddr.sin_family = AF_INET; 
-    printf("Enter the port number: "); 
-    scanf("%d", &port); 
-    getchar(); // Consume the newline 
-    serveraddr.sin_port = htons(port); 
-    connect(clientsocket, (struct sockaddr*)&serveraddr, sizeof(serveraddr)); 
+    int client; 
+    struct sockaddr_in serverAddr; 
+    char buffer[1024]; 
+
+    client = socket(AF_INET, SOCK_STREAM, 0); 
+    
+    serverAddr.sin_family = AF_INET; 
+    serverAddr.sin_port = htons(8080);
+    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    connect(client, 
+            (struct sockaddr*)&serverAddr,
+            sizeof(serverAddr)); 
     printf("Connected to server!\n"); 
  
-    // --- CHAT LOOP START --- 
     while(1) { 
-        printf("\nClient (You): "); 
-        fgets(message, 100, stdin); 
-        write(clientsocket, message, sizeof(message)); 
-        if (strncmp(message, "exit", 4) == 0) break; 
-        bzero(message, 100); 
-        read(clientsocket, message, sizeof(message)); 
-        printf("Server: %s", message); 
-        if (strncmp(message, "exit", 4) == 0) { 
-            printf("Server closed the chat.\n"); 
-            break; 
-        } 
+        memset(buffer, 0, sizeof(buffer));
+
+        printf("Client: ");
+        fgets(buffer, sizeof(buffer), stdin);
+
+        send(client, buffer, strlen(buffer), 0);
+
+        if (strncmp(buffer, "exit", 4) == 0) {
+            break;
+        }
+
+        memset(buffer, 0, sizeof(buffer));
+        recv(client, buffer, sizeof(buffer), 0);
+
+        printf("\nServer: %s", buffer);
+
+        if(strncmp(buffer, "exit", 4) == 0) {
+            printf("Server closed the chat.\n");
+            break;
+        }
+
     } 
-    // --- CHAT LOOP END --- 
-    close(clientsocket); 
+
+    close(client); 
     return 0; 
 }
