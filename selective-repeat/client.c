@@ -16,7 +16,6 @@ int main() {
     int received[10] = {0};
     int i, j;
 
-    // Create socket
     client = socket(AF_INET, SOCK_STREAM, 0);
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(8080);
@@ -25,22 +24,16 @@ int main() {
     connect(client,
             (struct sockaddr*)&serverAddr,
             sizeof(serverAddr));
-
     printf("Sender Started...\n");
 
-    // Timeout setup
     struct timeval tv;
-
     tv.tv_sec = 2;
     tv.tv_usec = 0;
-
     setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
-    // Initialize frames
     for(i = 0; i < 10; i++) {
         frames[i] = i;
     }
-
     int base = 0;
 
     while(base < 10) {
@@ -57,12 +50,10 @@ int main() {
 
         // Receive ACKs
         for(j = base; j < base + windowSize && j < 10; j++) {
-
             int n = recv(client, &ack, sizeof(ack), 0);
             if(n < 0) {
                 printf("Timeout for Frame %d\n", j);
             }
-
             else {
                 printf("ACK %d Received\n", ack);
                 received[ack] = 1;

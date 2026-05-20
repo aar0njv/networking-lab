@@ -22,7 +22,6 @@ int main() {
     // Create socket
     server = socket(AF_INET, SOCK_STREAM, 0);
 
-    // Server configuration
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     serverAddr.sin_port = htons(8080);
@@ -32,14 +31,12 @@ int main() {
          (struct sockaddr*)&serverAddr,
          sizeof(serverAddr));
 
-    // Listen
+
     listen(server, 5);
 
     printf("Receiver Waiting...\n");
 
     len = sizeof(clientAddr);
-
-    // Accept
     client = accept(server,
                     (struct sockaddr*)&clientAddr,
                     &len);
@@ -48,30 +45,17 @@ int main() {
 
     while(1) {
 
-        // Receive frame
-        recv(client,
-             &frame,
-             sizeof(frame),
-             0);
+        recv(client, &frame, sizeof(frame), 0);
 
-        // Random loss simulation
         if(rand() % 10 < 2) {
-
             printf("Frame %d Lost\n\n", frame);
-
             continue;
         }
 
         printf("Received Frame : %d\n", frame);
-
-        // ACK same frame
         ack = frame;
 
-        send(client,
-             &ack,
-             sizeof(ack),
-             0);
-
+        send(client, &ack, sizeof(ack), 0);
         printf("ACK %d Sent\n\n", ack);
     }
 

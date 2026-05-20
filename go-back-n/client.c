@@ -1,43 +1,65 @@
-#include <stdio.h> 
-#include <string.h> 
-#include <sys/socket.h> 
-#include <netinet/in.h> 
-#include <arpa/inet.h> 
-#include <unistd.h> 
- 
-int main() { 
-    int c_sock; 
-    struct sockaddr_in server; 
-    char buff[100], ack[50]; 
-    int expected_frame = 0; 
-    int simulate_loss = 1; // Used to drop frame 8 once 
-    c_sock = socket(AF_INET, SOCK_STREAM, 0); 
-    server.sin_family = AF_INET; 
-    server.sin_port = htons(9009); 
-    server.sin_addr.s_addr = inet_addr("127.0.0.1"); 
-    connect(c_sock, (struct sockaddr *)&server, sizeof(server)); 
-    printf("Connected to Server...\n"); 
- 
-    while (expected_frame <= 9) { 
-        read(c_sock, buff, sizeof(buff)); 
-        int received_id = buff[strlen(buff) - 1] - '0'; 
- 
-        // Simulate a loss for frame 8 
-        if (received_id == 8 && simulate_loss) { 
-            printf("Simulating loss of Frame 8...\n"); 
-            simulate_loss = 0; 
-            continue; // Don't send ACK, don't increment expected_frame 
-        } 
-        if (received_id == expected_frame) { 
-            printf("Received Frame %d. Sending ACK.\n", received_id); 
-            sprintf(ack, "ack-%d", received_id); 
-            write(c_sock, ack, sizeof(ack)); 
-            expected_frame++; 
-        } else { 
-            printf("Discarded Frame %d (Expected %d)\n", received_id, expected_frame); 
-            // In GBN, we don't ACK out-of-order frames 
-        } 
-    } 
-    close(c_sock); 
-    return 0; 
-} 
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<unistd.h>
+#include<sys/socket.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
+
+int main() {
+
+    int client;
+    struct sockaddr_in serverAddr;
+    int windowSize = 4;
+    int base = 0;
+    int nextFrame;
+    int ack;
+
+
+    client = socket(AF_INET, SOCK_STREAM, 0);
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(8080);
+    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    // Connect
+    connect(client,
+            (struct sockaddr*)&serverAddr,
+            sizeof(serverAddr));
+    printf("Sender Started...\n");
+
+    // Timeout setup
+    struct timeval tv;
+    tv.tv_sec = 2;
+    tv.tv_usec = 0;
+
+    setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+    while(base < 5) {
+
+        // Send window frames
+        for(nextFrame = base; nextFrame < base + windowSize && nextFrame < 5; nextFrame++) {
+
+            send(client, &nextFrame, sizeof(nextFrame), 0);
+            printf("Sent Frame : %d\n", nextFrame);
+        }
+
+        // Receive ACK
+        int n = recv(client, &ack, sizeof(ack), 0);
+
+        // Timeout
+        if(n < 0) {
+            printf("\nTimeout... Go Back To Frame %d\n\n", base);
+            continue;
+        }
+
+        printf("\nACK %d Received\n\n", ack);
+
+        // Slide window
+        base = ack + 1;
+        sleep(1);
+    }
+
+    close(client);
+
+    return 0;
+}

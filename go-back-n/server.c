@@ -1,51 +1,76 @@
-#include <stdio.h> 
-#include <string.h> 
-#include <sys/socket.h> 
-#include <netinet/in.h> 
-#include <unistd.h> 
-#include <sys/time.h> 
-#include <stdlib.h> 
- 
-int main() { 
-    int s_sock, c_sock; 
-    struct sockaddr_in server, client; 
-    socklen_t add = sizeof(client); 
-    char buff[50]; 
-    int next_to_send = 0; 
- 
-    s_sock = socket(AF_INET, SOCK_STREAM, 0); 
-    server.sin_family = AF_INET; 
-    server.sin_port = htons(9009); 
-    server.sin_addr.s_addr = INADDR_ANY; 
-    bind(s_sock, (struct sockaddr *)&server, sizeof(server)); 
-    listen(s_sock, 5); 
-    printf("Server Up - Go-Back-N (N=3)\n"); 
-    c_sock = accept(s_sock, (struct sockaddr *)&client, &add); 
- 
-    while (next_to_send <= 9) { 
-        
-        for (int i = 0; i < window_size && (next_to_send + i) <= 9; i++) { 
-            sprintf(buff, "server message :%d", next_to_send + i); 
-            printf("Sending Frame %d\n", next_to_send + i); 
-            write(c_sock, buff, sizeof(buff)); 
-            usleep(1000); 
-        } 
-        fd_set set; 
-        struct timeval timeout = {2, 0}; 
-        FD_ZERO(&set); 
-        FD_SET(c_sock, &set); 
-        int rv = select(c_sock + 1, &set, NULL, NULL, &timeout); 
-        if (rv == 0) { 
-            printf("Timeout for Frame %d! Going back...\n", next_to_send); 
-            
-        } else { 
-            read(c_sock, buff, sizeof(buff)); 
-            printf("Received ACK: %s\n", buff); 
-            next_to_send++;  
-        } 
-    } 
- 
-    printf("All frames sent successfully.\n"); 
-    close(c_sock); close(s_sock); 
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<unistd.h>
+#include<sys/socket.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
+#include<time.h>
+
+int main() {
+
+    int server, client;
+    struct sockaddr_in serverAddr, clientAddr;
+    socklen_t len;
+    int frame, ack;
+    int expected = 0;
+
+    srand(time(NULL));
+
+    // Create socket
+    server = socket(AF_INET, SOCK_STREAM, 0);
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+    serverAddr.sin_port = htons(8080);
+
+    bind(server,
+         (struct sockaddr*)&serverAddr,
+         sizeof(serverAddr));
+
+    listen(server, 5);
+
+    printf("Receiver Waiting...\n");
+
+    len = sizeof(clientAddr);
+
+    // Accept connection
+    client = accept(server,
+                    (struct sockaddr*)&clientAddr,
+                    &len);
+
+    printf("Connection Established...\n");
+
+
+    while(1) {
+
+        recv(client, &frame, sizeof(frame), 0);
+
+        // Random frame loss
+        if(rand() % 10 < 2) {
+            printf("Frame %d Lost\n\n", frame);
+            continue;
+        }
+
+        // Correct frame
+        if(frame == expected) {
+            printf("Received Frame : %d\n", frame);
+            ack = frame;
+            expected++;
+        }
+
+        // Out-of-order frame
+        else {
+            printf("Discarded Frame : %d\n", frame);
+            ack = expected - 1;
+        }
+
+        // Send ACK
+        send(client, &ack, sizeof(ack), 0);
+        printf("ACK %d Sent\n\n", ack);
+    }
+
+    close(client);
+    close(server);
+
     return 0;
 }
