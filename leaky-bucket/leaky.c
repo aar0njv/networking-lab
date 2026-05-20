@@ -9,6 +9,7 @@ int main() {
     while (n > 0) { 
         printf("\nEnter the incoming packet size: "); 
         scanf("%d", &incoming); 
+        
         if (incoming <= (bucket_size - store)) { 
             store += incoming; 
             printf("Bucket buffer size %d out of %d\n", store, bucket_size); 

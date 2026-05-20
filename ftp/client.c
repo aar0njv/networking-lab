@@ -1,30 +1,79 @@
-#include <stdio.h> 
-#include <sys/socket.h> 
-#include <netinet/in.h> 
-#include <arpa/inet.h> 
-#include <unistd.h> 
-#define SERV_TCP_PORT 5035 
-#define MAX 60 
- 
-int main() 
-{ 
-    int sockfd, n; 
-    struct sockaddr_in serv_addr; 
-    char sendline[MAX], recvline[MAX]; 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0); 
-    serv_addr.sin_family = AF_INET; 
-    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1"); 
-    serv_addr.sin_port = htons(SERV_TCP_PORT); 
-    connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)); 
-    printf("\nEnter the source file name: "); 
-    scanf("%s", sendline); 
-    // Send filename to server 
-    write(sockfd, sendline, MAX); 
-    printf("\n--- File Content ---\n"); 
-    while ((n = read(sockfd, recvline, MAX)) > 0) { 
-        recvline[n] = '\0'; // Ensure string termination 
-        printf("%s", recvline); 
-    } 
-    close(sockfd); 
-    return 0; 
+#include<stdio.h>
+#include<string.h>
+#include<stdlib.h>
+#include<unistd.h>
+#include<sys/socket.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
+
+int main() {
+
+    int client;
+
+    struct sockaddr_in serverAddr;
+
+    char buffer[1024];
+
+    char filename[100];
+
+    FILE *fp;
+
+    // Create socket
+    client = socket(AF_INET, SOCK_STREAM, 0);
+
+    if(client < 0) {
+        printf("Socket creation failed");
+        exit(1);
+    }
+
+    // Server configuration
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(8080);
+
+    inet_pton(AF_INET,
+              "127.0.0.1",
+              &serverAddr.sin_addr);
+
+    // Connect to server
+    if(connect(client,
+              (struct sockaddr*)&serverAddr,
+              sizeof(serverAddr)) < 0) {
+
+        printf("Connection failed");
+        exit(1);
+    }
+
+    printf("Connected to FTP Server...\n");
+
+    // Enter filename
+    printf("Enter filename: ");
+
+    scanf("%s", filename);
+
+    // Open file
+    fp = fopen(filename, "r");
+
+    if(fp == NULL) {
+        printf("File not found");
+        exit(1);
+    }
+
+    // Read and send file data
+    while(fgets(buffer, sizeof(buffer), fp) != NULL) {
+
+        send(client,
+             buffer,
+             strlen(buffer),
+             0);
+    }
+
+    printf("File sent successfully.\n");
+
+    // Close file
+    fclose(fp);
+
+    // Close socket
+    close(client);
+
+    return 0;
 }

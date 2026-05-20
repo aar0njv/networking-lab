@@ -1,38 +1,54 @@
-#include <stdio.h> 
-#include <string.h> 
-#include <sys/socket.h> 
-#include <arpa/inet.h> 
-#include <unistd.h> 
-#include <stdlib.h> 
- 
-int main(int argc, char *argv[]){ 
-    int sockfd, port = atoi(argv[1]); 
-    struct sockaddr_in serverAddr; 
-    socklen_t addr_size = sizeof(serverAddr); 
-    int frame_id = 0, ack_recv_val; 
-    char buffer[1024]; 
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0); 
-    serverAddr.sin_family = AF_INET; 
-    serverAddr.sin_port = htons(port); 
-    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1"); 
-     
-    while(1){ 
-        printf("Enter Data: "); 
-        scanf("%s", buffer); 
-        // Send raw buffer (The "Frame") 
-        sendto(sockfd, buffer, strlen(buffer) + 1, 0, (struct sockaddr*)&serverAddr, 
-sizeof(serverAddr)); 
-        printf("[+]Frame %d Sent\n", frame_id); 
-        // Wait for ACK (just an integer) 
-        int n = recvfrom(sockfd, &ack_recv_val, sizeof(int), 0, NULL, NULL);      
-        if(n > 0 && ack_recv_val == frame_id + 1){ 
-            printf("[+]Ack Received: %d\n", ack_recv_val); 
-            frame_id++; 
-        } else { 
-            printf("[-]Ack Error. Resending...\n"); 
-            // In a real logic, you wouldn't increment frame_id here 
-        } 
-    } 
-    close(sockfd); 
-    return 0; 
+#include<stdio.h>
+#include<string.h>
+#include<stdlib.h>
+#include<unistd.h>
+#include<sys/socket.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
+#include <sys/time.h>
+
+int main() {
+
+    int client;
+    struct sockaddr_in serverAddr;
+    int frame = 0, ack;
+
+    client = socket(AF_INET, SOCK_STREAM, 0);
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(8080);
+    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    // Connect
+    connect(client,
+            (struct sockaddr*)&serverAddr,
+            sizeof(serverAddr));
+
+    printf("Connected to server...\n\n");
+
+    struct timeval tv;
+    tv.tv_sec = 2;
+    tv.tv_usec = 0;
+
+    setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+    while(frame < 5) {
+        send(client, &frame, sizeof(frame), 0);
+        printf("Sent Frame %d\n", frame);
+
+        int n = recv(client, &ack, sizeof(ack), 0);
+        if(n < 0){
+            printf("Timeout... Resending Frame %d.\n\n", frame);
+            continue;
+        }
+
+        if (ack == frame) {
+            printf("ACK %d Recieved.\n\n", ack);
+            frame++;
+        }
+        sleep(1);
+    }
+
+    close(client);
+
+    return 0;
 }

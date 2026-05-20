@@ -1,4 +1,5 @@
 #include <stdio.h> 
+
 int main() { 
     int cost[20][20], dist[20][20], via[20][20]; 
     int n, i, j, k; 
